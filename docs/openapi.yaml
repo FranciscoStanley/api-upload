@@ -1,0 +1,275 @@
+openapi: 3.0.3
+info:
+  title: api-upload
+  version: 1.0.0
+  description: API versionada para upload de arquivos com validacao de payload.
+servers:
+  - url: http://localhost:8080
+    description: Local
+paths:
+  /api/v1/upload/single:
+    post:
+      tags:
+        - Upload
+      summary: Upload de arquivo unico
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                title:
+                  type: string
+                  maxLength: 120
+                description:
+                  type: string
+                  maxLength: 500
+                tags:
+                  type: string
+                  description: Lista separada por virgula
+                isPublic:
+                  type: boolean
+      responses:
+        "201":
+          description: Upload realizado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SingleUploadResponse"
+              examples:
+                sucessoSingle:
+                  summary: Upload single com metadata
+                  value:
+                    message: Arquivo enviado com sucesso
+                    file:
+                      filename: file-1776126681153-458796577-avatar.png
+                      path: C:/project/src/uploads/file-1776126681153-458796577-avatar.png
+                      mimetype: image/png
+                      size: 102400
+                    body:
+                      title: Avatar
+                      description: Foto de perfil
+                      tags:
+                        - perfil
+                        - usuario
+                      isPublic: true
+        "400":
+          description: Erro de validacao de payload, arquivo ausente ou tipo de arquivo nao permitido
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/AppMessageErrorResponse"
+                  - $ref: "#/components/schemas/AppValidationErrorResponse"
+              examples:
+                payloadInvalido:
+                  summary: Payload invalido
+                  value:
+                    error:
+                      message: Payload invalido
+                      details:
+                        - field: title
+                          message: "Too small: expected string to have >=1 characters"
+                arquivoNaoEnviado:
+                  summary: Arquivo nao enviado
+                  value:
+                    error:
+                      message: Arquivo nao enviado
+                tipoNaoPermitido:
+                  summary: Tipo de arquivo nao permitido
+                  value:
+                    error:
+                      message: Tipo de arquivo nao permitido
+  /api/v1/upload/multiple:
+    post:
+      tags:
+        - Upload
+      summary: Upload de multiplos arquivos
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - files
+              properties:
+                files:
+                  type: array
+                  maxItems: 5
+                  items:
+                    type: string
+                    format: binary
+                title:
+                  type: string
+                  maxLength: 120
+                description:
+                  type: string
+                  maxLength: 500
+                tags:
+                  type: string
+                  description: Lista separada por virgula
+                isPublic:
+                  type: boolean
+      responses:
+        "201":
+          description: Upload realizado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MultipleUploadResponse"
+              examples:
+                sucessoMultiple:
+                  summary: Upload multiple com metadata
+                  value:
+                    message: Arquivos enviados com sucesso
+                    files:
+                      - filename: files-1776126681153-458796577-foto-1.png
+                        path: C:/project/src/uploads/files-1776126681153-458796577-foto-1.png
+                        mimetype: image/png
+                        size: 100120
+                      - filename: files-1776126681199-998877665-foto-2.jpg
+                        path: C:/project/src/uploads/files-1776126681199-998877665-foto-2.jpg
+                        mimetype: image/jpeg
+                        size: 250340
+                    body:
+                      title: Galeria de Evento
+                      tags:
+                        - evento
+                        - imagens
+                      isPublic: false
+        "400":
+          description: Erro de validacao de payload, lista de arquivos, limite ou tipo de arquivo
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/AppMessageErrorResponse"
+                  - $ref: "#/components/schemas/AppValidationErrorResponse"
+                  - $ref: "#/components/schemas/MulterErrorResponse"
+              examples:
+                payloadInvalido:
+                  summary: Payload invalido
+                  value:
+                    error:
+                      message: Payload invalido
+                      details:
+                        - field: title
+                          message: "Too small: expected string to have >=1 characters"
+                arquivosNaoEnviados:
+                  summary: Lista de arquivos ausente
+                  value:
+                    error:
+                      message: Arquivos nao enviados
+                limiteExcedido:
+                  summary: Limite de arquivos excedido
+                  value:
+                    error:
+                      message: Unexpected field
+                      code: LIMIT_UNEXPECTED_FILE
+                tipoNaoPermitido:
+                  summary: Tipo de arquivo nao permitido
+                  value:
+                    error:
+                      message: Tipo de arquivo nao permitido
+components:
+  schemas:
+    FileEntity:
+      type: object
+      properties:
+        filename:
+          type: string
+        path:
+          type: string
+        mimetype:
+          type: string
+        size:
+          type: number
+    SingleUploadResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        file:
+          $ref: "#/components/schemas/FileEntity"
+        body:
+          $ref: "#/components/schemas/UploadBody"
+    MultipleUploadResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        files:
+          type: array
+          items:
+            $ref: "#/components/schemas/FileEntity"
+        body:
+          $ref: "#/components/schemas/UploadBody"
+    UploadBody:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        isPublic:
+          type: boolean
+    AppMessageErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            message:
+              type: string
+          required:
+            - message
+      required:
+        - error
+    AppValidationErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            message:
+              type: string
+            details:
+              type: array
+              items:
+                type: object
+                properties:
+                  field:
+                    type: string
+                  message:
+                    type: string
+          required:
+            - message
+            - details
+      required:
+        - error
+    MulterErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            message:
+              type: string
+            code:
+              type: string
+          required:
+            - message
+            - code
+      required:
+        - error
